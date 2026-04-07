@@ -680,7 +680,8 @@ async def manejar_puntaje(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.edit_message_text(
         f"¿Cuántas estrellas le das a {'la' if tipo == 'pelicula' else 'el'} {tipo_txt}?",
         reply_markup=InlineKeyboardMarkup(estrellas)
-    )    query = update.callback_query
+    )    
+    query = update.callback_query
     await query.answer()
     data = query.data
     nombre = query.from_user.first_name
