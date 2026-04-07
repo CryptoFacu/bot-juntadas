@@ -436,18 +436,17 @@ async def manejar_voto_sorteo(update: Update, context: ContextTypes.DEFAULT_TYPE
         j = juntada_data[0]
 
         existing = supabase.table("votos_sorteo").select("*")\
-            .eq("juntada_id", juntada_id).eq("participante", nombre).execute().data
+    .eq("juntada_id", juntada_id).eq("participante", nombre).execute().data
 
-        if existing:
-            supabase.table("votos_sorteo").update({"voto": voto})\
-                .eq("juntada_id", juntada_id).eq("participante", nombre).execute()
-        else:
-            supabase.table("votos_sorteo").insert({
-                "juntada_id": juntada_id,
-                "participante": nombre,
-                "tipo": "sorteo",
-                "voto": voto
-            }).execute()
+if existing:
+    supabase.table("votos_sorteo").update({"voto": voto})\
+        .eq("juntada_id", juntada_id).eq("participante", nombre).execute()
+else:
+    supabase.table("votos_sorteo").insert({
+        "juntada_id": juntada_id,
+        "participante": nombre,
+        "voto": voto
+    }).execute()
 
         participantes = get_participantes(chat_id)
         votos = supabase.table("votos_sorteo").select("*").eq("juntada_id", juntada_id).execute().data
