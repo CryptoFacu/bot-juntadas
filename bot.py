@@ -34,16 +34,18 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "chat_id": chat_id
         }).execute()
 
+     keyboard = [
+        [InlineKeyboardButton("📅 Proponer fecha", callback_data="menu_proponer")],
+        [InlineKeyboardButton("🗳 Ver votación activa", callback_data="menu_ver_propuesta")],
+        [InlineKeyboardButton("🎬 Agregar película", callback_data="menu_agregar_peli")],
+        [InlineKeyboardButton("🎵 Agregar álbum", callback_data="menu_agregar_album")],
+        [InlineKeyboardButton("🎲 Sortear", callback_data="menu_sortear")],
+        [InlineKeyboardButton("📋 Historial", callback_data="menu_historial")]
+    ]
+
     await update.message.reply_text(
-        f"Hola {nombre}! 🎉 Ya quedaste registrado en este grupo.\n\n"
-        "Comandos disponibles:\n"
-        "/proponer - Proponer día y hora\n"
-        "/verpropostas - Ver propuestas y votar\n"
-        "/agregarpeli - Agregar película\n"
-        "/agregaralbum - Agregar álbum\n"
-        "/sortear - Sortear peli y álbum\n"
-        "/puntuar - Puntuar lo que vimos\n"
-        "/historial - Ver historial"
+        f"Hola {nombre}! 🎉 Ya quedaste registrado en este grupo.\n\nElegí una opción:",
+        reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
 # ── PROPONER DÍA ──
