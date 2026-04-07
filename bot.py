@@ -23,14 +23,22 @@ ESPERANDO_DIA, ESPERANDO_HORA, ESPERANDO_PELICULA, ESPERANDO_ALBUM, ESPERANDO_PU
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     nombre = update.effective_user.first_name
     telegram_id = update.effective_user.id
-    existing = supabase.table("participantes").select("*").eq("telegram_id", telegram_id).execute()
+    chat_id = update.effective_chat.id
+
+    existing = supabase.table("participantes").select("*").eq("telegram_id", telegram_id).eq("chat_id", chat_id).execute()
+
     if not existing.data:
-        supabase.table("participantes").insert({"telegram_id": telegram_id, "nombre": nombre}).execute()
+        supabase.table("participantes").insert({
+            "telegram_id": telegram_id,
+            "nombre": nombre,
+            "chat_id": chat_id
+        }).execute()
+
     await update.message.reply_text(
-        f"Hola {nombre}! 🎉 Bienvenido al bot de juntadas.\n\n"
+        f"Hola {nombre}! 🎉 Ya quedaste registrado en este grupo.\n\n"
         "Comandos disponibles:\n"
         "/proponer - Proponer día y hora\n"
-        "/verpropuestas - Ver propuestas y votar\n"
+        "/verpropostas - Ver propuestas y votar\n"
         "/agregarpeli - Agregar película\n"
         "/agregaralbum - Agregar álbum\n"
         "/sortear - Sortear peli y álbum\n"
@@ -40,6 +48,22 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ── PROPONER DÍA ──
 async def proponer(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
+
+    juntada = supabase.table("juntadas").select("*").eq("chat_id", chat_id).in_("estado", ["esperando_fecha", "votando_fecha"]).execute()
+
+    if juntada.data:
+        await update.message.reply_text("⚠️ Ya hay una propuesta de fecha en curso. Esperá a que se resuelva.")
+        return ConversationHandler.END
+
+    # crear nueva juntada
+    nueva = supabase.table("juntadas").insert({
+        "chat_id": chat_id,
+        "estado": "esperando_fecha"
+    }).execute()
+
+    context.user_data["juntada_id"] = nueva.data[0]["id"]
+
     await update.message.reply_text("¿Qué día proponés? (ej: Sábado 15/02)")
     return ESPERANDO_DIA
 
@@ -52,60 +76,139 @@ async def recibir_hora(update: Update, context: ContextTypes.DEFAULT_TYPE):
     dia = context.user_data["dia"]
     hora = update.message.text
     nombre = update.effective_user.first_name
-    juntada = supabase.table("juntadas").select("*").eq("estado", "pendiente").execute()
+    chat_id = update.effective_chat.id
+
+    juntada = supabase.table("juntadas").select("*").eq("chat_id", chat_id).eq("estado", "esperando_fecha").execute()
+
     if not juntada.data:
-        juntada = supabase.table("juntadas").insert({"estado": "pendiente"}).execute()
-        juntada_id = juntada.data[0]["id"]
-    else:
-        juntada_id = juntada.data[0]["id"]
+        await update.message.reply_text("⚠️ No encontré una juntada activa para esta propuesta.")
+        return ConversationHandler.END
+
+    juntada_id = juntada.data[0]["id"]
+
     supabase.table("propuestas_horario").insert({
         "juntada_id": juntada_id,
         "propuesto_por": nombre,
         "fecha": dia,
         "hora": hora
     }).execute()
-    await update.message.reply_text(f"✅ Propuesta cargada: {dia} a las {hora}")
+
+    supabase.table("juntadas").update({
+        "fecha_propuesta": dia,
+        "hora_propuesta": hora,
+        "estado": "votando_fecha"
+    }).eq("id", juntada_id).execute()
+
+    keyboard = [[
+        InlineKeyboardButton("✅ Acepto", callback_data=f"voto_si_{juntada_id}"),
+        InlineKeyboardButton("❌ Rechazo", callback_data=f"voto_no_{juntada_id}")
+    ]]
+
+    await update.message.reply_text(
+        f"📅 Nueva propuesta de juntada:\n\n{dia} a las {hora}\n\nVoten todos. Tiene que haber unanimidad.",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
     return ConversationHandler.END
 
 # ── VER PROPUESTAS Y VOTAR ──
 async def ver_propuestas(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    juntada = supabase.table("juntadas").select("*").eq("estado", "pendiente").execute()
+    chat_id = update.effective_chat.id
+
+    juntada = supabase.table("juntadas").select("*").eq("chat_id", chat_id).eq("estado", "votando_fecha").execute()
+
     if not juntada.data:
-        await update.message.reply_text("No hay juntada pendiente. Usá /proponer para crear una.")
+        await update.message.reply_text("No hay una propuesta de fecha activa en este momento.")
         return
-    juntada_id = juntada.data[0]["id"]
-    propuestas = supabase.table("propuestas_horario").select("*").eq("juntada_id", juntada_id).execute()
-    if not propuestas.data:
-        await update.message.reply_text("No hay propuestas todavía. Usá /proponer.")
-        return
-    keyboard = []
-    for p in propuestas.data:
-        texto = f"{p['fecha']} {p['hora']} (por {p['propuesto_por']})"
-        keyboard.append([
-            InlineKeyboardButton(f"✅ {texto}", callback_data=f"voto_si_{p['id']}"),
-            InlineKeyboardButton(f"❌", callback_data=f"voto_no_{p['id']}")
-        ])
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text("Propuestas de horario — votá:", reply_markup=reply_markup)
+
+    juntada_actual = juntada.data[0]
+    juntada_id = juntada_actual["id"]
+    fecha = juntada_actual.get("fecha_propuesta")
+    hora = juntada_actual.get("hora_propuesta")
+
+    keyboard = [[
+        InlineKeyboardButton("✅ Acepto", callback_data=f"voto_si_{juntada_id}"),
+        InlineKeyboardButton("❌ Rechazo", callback_data=f"voto_no_{juntada_id}")
+    ]]
+
+    await update.message.reply_text(
+        f"📅 Propuesta activa:\n\n{fecha} a las {hora}\n\nVoten todos. Tiene que haber unanimidad.",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
 
 async def manejar_voto_horario(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
+
     data = query.data
     nombre = query.from_user.first_name
+    chat_id = query.message.chat.id
+
     if data.startswith("voto_si_"):
-        propuesta_id = int(data.replace("voto_si_", ""))
+        juntada_id = int(data.replace("voto_si_", ""))
         voto = "si"
     else:
-        propuesta_id = int(data.replace("voto_no_", ""))
+        juntada_id = int(data.replace("voto_no_", ""))
         voto = "no"
-    existing = supabase.table("votos_horario").select("*").eq("propuesta_id", propuesta_id).eq("participante", nombre).execute()
+
+    propuesta = supabase.table("juntadas").select("*").eq("id", juntada_id).eq("chat_id", chat_id).execute()
+
+    if not propuesta.data:
+        await query.edit_message_text("⚠️ No encontré la juntada activa.")
+        return
+
+    estado_actual = propuesta.data[0]["estado"]
+
+    if estado_actual != "votando_fecha":
+        await query.edit_message_text("⚠️ Esta votación ya no está activa.")
+        return
+
+    existing = supabase.table("votos_horario").select("*").eq("propuesta_id", juntada_id).eq("participante", nombre).execute()
+
     if existing.data:
-        supabase.table("votos_horario").update({"voto": voto}).eq("propuesta_id", propuesta_id).eq("participante", nombre).execute()
+        supabase.table("votos_horario").update({"voto": voto}).eq("propuesta_id", juntada_id).eq("participante", nombre).execute()
     else:
-        supabase.table("votos_horario").insert({"propuesta_id": propuesta_id, "participante": nombre, "voto": voto}).execute()
-    emoji = "✅" if voto == "si" else "❌"
-    await query.edit_message_text(f"Voto registrado {emoji} — {nombre}")
+        supabase.table("votos_horario").insert({
+            "propuesta_id": juntada_id,
+            "participante": nombre,
+            "voto": voto
+        }).execute()
+
+    participantes = supabase.table("participantes").select("*").eq("chat_id", chat_id).execute()
+    votos = supabase.table("votos_horario").select("*").eq("propuesta_id", juntada_id).execute()
+
+    total_participantes = len(participantes.data)
+    total_votos = len(votos.data)
+    total_no = len([v for v in votos.data if v["voto"] == "no"])
+    total_si = len([v for v in votos.data if v["voto"] == "si"])
+
+    if total_no > 0:
+        supabase.table("juntadas").update({"estado": "esperando_fecha"}).eq("id", juntada_id).execute()
+        await query.edit_message_text(
+            f"❌ La propuesta fue rechazada.\n\n"
+            f"Sí: {total_si} | No: {total_no}\n\n"
+            f"Ya se puede proponer una nueva fecha con /proponer"
+        )
+        return
+
+    if total_votos == total_participantes and total_si == total_participantes:
+        supabase.table("juntadas").update({
+            "fecha_confirmada": propuesta.data[0]["fecha_propuesta"],
+            "hora_confirmada": propuesta.data[0]["hora_propuesta"],
+            "estado": "fecha_confirmada"
+        }).eq("id", juntada_id).execute()
+
+        await query.edit_message_text(
+            f"✅ Fecha confirmada por unanimidad:\n\n"
+            f"{propuesta.data[0]['fecha_propuesta']} a las {propuesta.data[0]['hora_propuesta']}"
+        )
+        return
+
+    await query.edit_message_text(
+        f"🗳️ Voto registrado de {nombre}\n\n"
+        f"Sí: {total_si} | No: {total_no}\n"
+        f"Faltan votar: {total_participantes - total_votos}"
+    )
 
 # ── AGREGAR PELÍCULA ──
 async def agregar_peli(update: Update, context: ContextTypes.DEFAULT_TYPE):
