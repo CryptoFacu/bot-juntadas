@@ -355,7 +355,7 @@ async def recibir_album(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def sortear(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
-    await _hacer_sorteo(update.message, context, chat_id)
+    await_hacer_sorteo(update.message, context, chat_id)
 
 async def _hacer_sorteo(message, context, chat_id):
     # Verificar que no haya un sorteo pendiente de votación
