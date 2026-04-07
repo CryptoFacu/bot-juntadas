@@ -31,13 +31,13 @@ ESPERANDO_PELICULA, ESPERANDO_ALBUM
 # ══════════════════════════════════════════
 
 def get_participantes(chat_id):
-return supabase.table("participantes").select("*").eq("chat_id", chat_id).execute().data
+    return supabase.table("participantes").select("*").eq("chat_id", chat_id).execute().data
 
 def get_juntada_activa(chat_id, estados):
-return supabase.table("juntadas").select("*").eq("chat_id", chat_id).in_("estado", estados).execute().data
+    return supabase.table("juntadas").select("*").eq("chat_id", chat_id).in_("estado", estados).execute().data
 
 def menu_keyboard():
-return InlineKeyboardMarkup([
+    return InlineKeyboardMarkup([
     [InlineKeyboardButton("📅 Proponer fecha", callback_data="menu_proponer")],
     [InlineKeyboardButton("🗳 Ver votación de fecha", callback_data="menu_ver_fecha")],
     [InlineKeyboardButton("🎬 Agregar película", callback_data="menu_peli"),
