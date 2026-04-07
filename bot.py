@@ -188,14 +188,10 @@ async def ver_propuestas(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await _ver_votacion_fecha(update.message, update.effective_chat.id)
 
 async def _ver_votacion_fecha(message, chat_id):
- def get_juntada_activa(chat_id, estados):
-    return supabase.table("juntadas")\
-        .select("*")\
-        .eq("chat_id", chat_id)\
-        .in_("estado", estados)\
-        .order("id", desc=True)\
-        .limit(1)\
-        .execute().data
+    activa = get_juntada_activa(chat_id, ["votando_fecha"])
+    if not activa:
+        await message.reply_text("No hay ninguna propuesta de fecha activa ahora.")
+        return
 
     j = activa[0]
     juntada_id = j["id"]
@@ -217,7 +213,6 @@ async def _ver_votacion_fecha(message, chat_id):
         parse_mode="Markdown",
         reply_markup=keyboard
     )
-
 
 # ══════════════════════════════════════════
 #  VOTAR FECHA
