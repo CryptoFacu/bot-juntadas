@@ -355,6 +355,7 @@ def main():
         fallbacks=[]
     )
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CallbackQueryHandler(manejar_menu, pattern="^menu_"))
     app.add_handler(conv_proponer)
     app.add_handler(conv_peli)
     app.add_handler(conv_album)
