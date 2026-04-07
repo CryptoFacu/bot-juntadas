@@ -660,19 +660,16 @@ else:
 
 
 
-        # Marcar como visto/escuchado
-        if tipo == "pelicula":
-            supabase.table("peliculas").update({"vista": True}).eq("id", item_id).execute()
-        else:
-            supabase.table("albumes").update({"escuchado": True}).eq("id", item_id).execute()
+if tipo == "pelicula":
+    supabase.table("peliculas").update({"vista": True}).eq("id", item_id).execute()
+else:
+    supabase.table("albumes").update({"escuchado": True}).eq("id", item_id).execute()
 
-        await query.edit_message_text(
-            f"{'🎬' if tipo == 'pelicula' else '🎵'} Puntaje registrado: {'⭐' * puntaje} ({puntaje}/5)\n"
-            f"Gracias {nombre}! Podés puntuar el otro item con /puntuar"
-        )
-        return
-    else:
-        return
+await query.edit_message_text(
+    f"{'🎬' if tipo == 'pelicula' else '🎵'} Puntaje registrado: {'⭐' * puntaje} ({puntaje}/5)\n"
+    f"Gracias {nombre}! Podés puntuar el otro item con /puntuar"
+)
+return
 
     # Mostrar estrellas
     estrellas = [[
