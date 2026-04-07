@@ -9,9 +9,9 @@ from supabase import create_client
 # ══════════════════════════════════════════
 import os
 
-TOKEN = os.getenv("8750613819:AAHA6pjgTRZ4mSLjrmZnOpE5-xhyxUSPNCc")
-SUPABASE_URL = os.getenv("https://nizgneczrwohfkhgrprw.supabase.co")
-SUPABASE_KEY = os.getenv("sb_publishable_J5SUxL_r3JDgaiYfxq6sLQ_Gcbout8-")
+TOKEN = os.getenv("TOKEN")
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
 # ══════════════════════════════════════════
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
