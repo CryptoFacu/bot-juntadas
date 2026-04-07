@@ -34,7 +34,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "chat_id": chat_id
         }).execute()
 
-     keyboard = [
+    keyboard = [
         [InlineKeyboardButton("📅 Proponer fecha", callback_data="menu_proponer")],
         [InlineKeyboardButton("🗳 Ver votación activa", callback_data="menu_ver_propuesta")],
         [InlineKeyboardButton("🎬 Agregar película", callback_data="menu_agregar_peli")],
