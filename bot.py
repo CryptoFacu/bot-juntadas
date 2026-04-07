@@ -457,14 +457,12 @@ async def manejar_voto_sorteo(update: Update, context: ContextTypes.DEFAULT_TYPE
 
         peli_id = j.get("pelicula_sorteada_id")
         album_id = j.get("album_sorteado_id")
-
         peli = supabase.table("peliculas").select("titulo").eq("id", peli_id).execute().data if peli_id else []
         album = supabase.table("albumes").select("titulo,artista").eq("id", album_id).execute().data if album_id else []
 
         peli_txt = peli[0]["titulo"] if peli else "—"
         album_txt = f"{album[0]['artista']} — {album[0]['titulo']}" if album else "—"
 
-        # Si hay rechazo → resortear
         if total_no > 0:
             supabase.table("juntadas").update({"estado": "fecha_confirmada"}).eq("id", juntada_id).execute()
             await query.edit_message_text(
@@ -473,7 +471,6 @@ async def manejar_voto_sorteo(update: Update, context: ContextTypes.DEFAULT_TYPE
             )
             return
 
-        # Todos aceptaron
         if len(votos) >= total_part and total_si == total_part:
             supabase.table("juntadas").update({"estado": "sorteo_confirmado"}).eq("id", juntada_id).execute()
             await query.edit_message_text(
@@ -485,7 +482,6 @@ async def manejar_voto_sorteo(update: Update, context: ContextTypes.DEFAULT_TYPE
             )
             return
 
-        # Todavía faltan votos
         keyboard = InlineKeyboardMarkup([[
             InlineKeyboardButton("👍 Me copa", callback_data=f"sorteo_si_{juntada_id}"),
             InlineKeyboardButton("👎 Resortear", callback_data=f"sorteo_no_{juntada_id}")
@@ -500,10 +496,9 @@ async def manejar_voto_sorteo(update: Update, context: ContextTypes.DEFAULT_TYPE
             reply_markup=keyboard
         )
 
-    except Exception:
+    except Exception as e:
         logging.exception("Error en manejar_voto_sorteo")
-        await update.callback_query.answer("Hubo un error al votar.", show_alert=True)
-
+        await query.message.reply_text(f"ERROR voto sorteo: {e}")
 
 # ══════════════════════════════════════════
 #  PUNTUAR — /puntuar
