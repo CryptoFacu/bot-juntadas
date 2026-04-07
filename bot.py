@@ -7,9 +7,11 @@ from supabase import create_client
 # ══════════════════════════════════════════
 #  CONFIGURACIÓN - COMPLETÁ ESTOS DATOS
 # ══════════════════════════════════════════
-TOKEN = "8750613819:AAHA6pjgTRZ4mSLjrmZnOpE5-xhyxUSPNCc"
-SUPABASE_URL = "https://nizgneczrwohfkhgrprw.supabase.co"
-SUPABASE_KEY = "sb_publishable_J5SUxL_r3JDgaiYfxq6sLQ_Gcbout8-"
+import os
+
+TOKEN = os.getenv("8750613819:AAHA6pjgTRZ4mSLjrmZnOpE5-xhyxUSPNCc")
+SUPABASE_URL = os.getenv("https://nizgneczrwohfkhgrprw.supabase.co")
+SUPABASE_KEY = os.getenv("sb_publishable_J5SUxL_r3JDgaiYfxq6sLQ_Gcbout8-")
 
 # ══════════════════════════════════════════
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
