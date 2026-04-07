@@ -568,6 +568,123 @@ async def manejar_puntaje(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = query.data
     nombre = query.from_user.first_name
 
+    # puntuar_peli_{peli_id}_{juntada_id}
+    if data.startswith("puntuar_peli_"):
+        partes = data.replace("puntuar_peli_", "").split("_")
+        item_id = int(partes[0])
+        juntada_id = int(partes[1])
+        tipo = "pelicula"
+
+        existing = supabase.table("puntuaciones").select("*") \
+            .eq("item_id", item_id) \
+            .eq("tipo", tipo) \
+            .eq("participante", nombre) \
+            .execute().data
+
+        if existing:
+            intentos = existing[0].get("intentos", 1)
+            if intentos >= 2:
+                await query.answer(
+                    "Ya agotaste tus 2 intentos de puntuación para este item.",
+                    show_alert=True
+                )
+                return
+
+    # puntuar_album_{album_id}_{juntada_id}
+    elif data.startswith("puntuar_album_"):
+        partes = data.replace("puntuar_album_", "").split("_")
+        item_id = int(partes[0])
+        juntada_id = int(partes[1])
+        tipo = "album"
+
+        existing = supabase.table("puntuaciones").select("*") \
+            .eq("item_id", item_id) \
+            .eq("tipo", tipo) \
+            .eq("participante", nombre) \
+            .execute().data
+
+        if existing:
+            intentos = existing[0].get("intentos", 1)
+            if intentos >= 2:
+                await query.answer(
+                    "Ya agotaste tus 2 intentos de puntuación para este item.",
+                    show_alert=True
+                )
+                return
+
+    # estrella_{tipo}_{item_id}_{juntada_id}_{puntaje}
+    elif data.startswith("estrella_"):
+        partes = data.replace("estrella_", "").split("_")
+        tipo = partes[0]
+        item_id = int(partes[1])
+        juntada_id = int(partes[2])
+        puntaje = int(partes[3])
+
+        existing = supabase.table("puntuaciones").select("*") \
+            .eq("item_id", item_id) \
+            .eq("tipo", tipo) \
+            .eq("participante", nombre) \
+            .execute().data
+
+        if existing:
+            intentos = existing[0].get("intentos", 1)
+
+            if intentos >= 2:
+                await query.answer(
+                    "Ya agotaste tus 2 intentos de puntuación para este item.",
+                    show_alert=True
+                )
+                return
+
+            supabase.table("puntuaciones").update({
+                "puntaje": puntaje,
+                "intentos": intentos + 1
+            }) \
+            .eq("item_id", item_id) \
+            .eq("tipo", tipo) \
+            .eq("participante", nombre) \
+            .execute()
+
+        else:
+            supabase.table("puntuaciones").insert({
+                "participante": nombre,
+                "tipo": tipo,
+                "item_id": item_id,
+                "puntaje": puntaje,
+                "intentos": 1
+            }).execute()
+
+        if tipo == "pelicula":
+            supabase.table("peliculas").update({"vista": True}).eq("id", item_id).execute()
+        else:
+            supabase.table("albumes").update({"escuchado": True}).eq("id", item_id).execute()
+
+        await query.edit_message_text(
+            f"{'🎬' if tipo == 'pelicula' else '🎵'} Puntaje registrado: {'⭐' * puntaje} ({puntaje}/5)\n"
+            f"Gracias {nombre}! Podés puntuar el otro item con /puntuar"
+        )
+        return
+
+    else:
+        return
+
+    # Mostrar estrellas
+    estrellas = [[
+        InlineKeyboardButton(
+            f"{'⭐' * i} {i}",
+            callback_data=f"estrella_{tipo}_{item_id}_{juntada_id}_{i}"
+        )
+        for i in range(1, 6)
+    ]]
+    tipo_txt = "película" if tipo == "pelicula" else "álbum"
+    await query.edit_message_text(
+        f"¿Cuántas estrellas le das a {'la' if tipo == 'pelicula' else 'el'} {tipo_txt}?",
+        reply_markup=InlineKeyboardMarkup(estrellas)
+    )    query = update.callback_query
+    await query.answer()
+    data = query.data
+    nombre = query.from_user.first_name
+
     if data.startswith("puntuar_peli_"):
         partes = data.replace("puntuar_peli_", "").split("_")
         item_id = int(partes[0])
