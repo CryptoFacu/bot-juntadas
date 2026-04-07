@@ -333,6 +333,29 @@ async def historial(update: Update, context: ContextTypes.DEFAULT_TYPE):
         mensaje += "🎵 Sin álbumes escuchados aún.\n"
     await update.message.reply_text(mensaje, parse_mode="Markdown")
 
+# ── MENÚ ──
+async def manejar_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    data = query.data
+
+    if data == "menu_proponer":
+        await query.message.reply_text("¿Qué día proponés? (ej: Sábado 15/02)")
+        context.user_data["esperando"] = "dia"
+    elif data == "menu_ver_propuesta":
+        await ver_propuestas(query.message, context)
+    elif data == "menu_agregar_peli":
+        await query.message.reply_text("¿Qué película querés agregar?")
+        context.user_data["esperando"] = "pelicula"
+    elif data == "menu_agregar_album":
+        await query.message.reply_text("¿Qué álbum querés agregar? (formato: Artista - Álbum)")
+        context.user_data["esperando"] = "album"
+    elif data == "menu_sortear":
+        await sortear(query.message, context)
+    elif data == "menu_historial":
+        await historial(query.message, context)
+
+
 # ── MAIN ──
 def main():
     app = Application.builder().token(TOKEN).build()
