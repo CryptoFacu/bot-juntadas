@@ -445,6 +445,7 @@ async def manejar_voto_sorteo(update: Update, context: ContextTypes.DEFAULT_TYPE
             supabase.table("votos_sorteo").insert({
                 "juntada_id": juntada_id,
                 "participante": nombre,
+                "tipo": "sorteo",
                 "voto": voto
             }).execute()
 
