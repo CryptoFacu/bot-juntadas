@@ -623,19 +623,42 @@ async def manejar_puntaje(update: Update, context: ContextTypes.DEFAULT_TYPE):
         juntada_id = int(partes[2])
         puntaje = int(partes[3])
 
-        # Guardar en puntuaciones
-        existing = supabase.table("puntuaciones").select("*")\
-            .eq("item_id", item_id).eq("tipo", tipo).eq("participante", nombre).execute().data
-        if existing:
-            supabase.table("puntuaciones").update({"puntaje": puntaje})\
-                .eq("item_id", item_id).eq("tipo", tipo).eq("participante", nombre).execute()
-        else:
-            supabase.table("puntuaciones").insert({
-                "participante": nombre,
-                "tipo": tipo,
-                "item_id": item_id,
-                "puntaje": puntaje
-            }).execute()
+# Guardar en puntuaciones
+existing = supabase.table("puntuaciones").select("*")\
+    .eq("item_id", item_id)\
+    .eq("tipo", tipo)\
+    .eq("participante", nombre)\
+    .execute().data
+
+if existing:
+    intentos = existing[0].get("intentos", 1)
+
+    if intentos >= 2:
+        await query.answer(
+            "Ya agotaste tus 2 intentos de puntuación para este item.",
+            show_alert=True
+        )
+        return
+
+    supabase.table("puntuaciones").update({
+        "puntaje": puntaje,
+        "intentos": intentos + 1
+    })\
+    .eq("item_id", item_id)\
+    .eq("tipo", tipo)\
+    .eq("participante", nombre)\
+    .execute()
+
+else:
+    supabase.table("puntuaciones").insert({
+        "participante": nombre,
+        "tipo": tipo,
+        "item_id": item_id,
+        "puntaje": puntaje,
+        "intentos": 1
+    }).execute()
+
+
 
         # Marcar como visto/escuchado
         if tipo == "pelicula":
