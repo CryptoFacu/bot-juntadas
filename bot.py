@@ -719,13 +719,17 @@ async def manejar_puntaje(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if existing:
             intentos = existing[0].get("intentos", 1)
 
-            if intentos >= 2:
-                await query.answer(
-                    "Ya agotaste tus 2 intentos de puntuación para este item.",
-                    show_alert=True
-                )
-                return
+        if intentos >= 2:
+            await query.answer(
+                "Ya agotaste tus 2 intentos de puntuación para este item.",
+                show_alert=True
+            )
 
+            await query.edit_message_text(
+                "❌ Ya agotaste tus 2 intentos de puntuación para este item.\n\n"
+                 "Podés puntuar el otro item con /puntuar"
+             )
+            return
             supabase.table("puntuaciones").update({
                 "puntaje": puntaje,
                 "intentos": intentos + 1
